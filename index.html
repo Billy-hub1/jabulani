@@ -1,0 +1,520 @@
+Alders become filter buttons).
+   ===================================================================== */
+
+// ---------- ROUTING ----------
+$pages = ['home','about','events','gallery','get-involved','initiatives'];
+$page  = $_GET['page'] ?? 'home';
+if (!in_array($page, $pages, true)) { $page = 'home'; }
+$titles = ['home'=>'Home','about'=>'About','events'=>'Upcoming Events','gallery'=>'Gallery','get-involved'=>'Get Involved','initiatives'=>'Initiatives'];
+function act($p, $page) { return $p === $page ? ' active' : ''; }
+
+// ---------- CONTACT FORM ----------
+$form_status = ''; $form_message = '';
+$name_val = $email_val = $phone_val = $help_topic_val = $message_val = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $name       = filter_input(INPUT_POST, 'name', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+    $email      = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
+    $phone      = filter_input(INPUT_POST, 'phone', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+    $help_topic = filter_input(INPUT_POST, 'help_topic', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+    $message    = filter_input(INPUT_POST, 'message', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+
+    $name_val = $_POST['name'] ?? ''; $email_val = $_POST['email'] ?? ''; $phone_val = $_POST['phone'] ?? '';
+    $help_topic_val = $_POST['help_topic'] ?? ''; $message_val = $_POST['message'] ?? '';
+
+    if (!$name || !$email || !$help_topic) {
+        $form_status = 'error';
+        $form_message = 'Please fill in all required fields (*).';
+    } else {
+        $to = "info@lindelwafoundation.org";
+        $subject = "New Inquiry from Website: " . $help_topic;
+        $body  = "Name: $name\nEmail: $email\n";
+        $body .= "Phone: " . ($phone ? $phone : 'Not provided') . "\n";
+        $body .= "Help Topic: $help_topic\n\nMessage:\n" . ($message ? $message : 'N/A') . "\n";
+        $headers  = "From: webmaster@lindelwafoundation.org\r\nReply-To: $email\r\nX-Mailer: PHP/" . phpversion();
+        @mail($to, $subject, $body, $headers);
+        $form_status = 'success';
+        $form_message = 'Thank you for reaching out! Your message has been received successfully.';
+        $name_val = $email_val = $phone_val = $help_topic_val = $message_val = '';
+    }
+}
+
+// ---------- GALLERY DATA ----------
+$gallery = []; $gcats = [];
+if ($page === 'gallery') {
+    $base = __DIR__ . '/images/gallery';
+    $exts = '{jpg,jpeg,png,webp,gif,JPG,JPEG,PNG,WEBP}';
+    $cap  = fn($f) => ucwords(str_replace(['-','_'], ' ', pathinfo($f, PATHINFO_FILENAME)));
+    foreach (glob("$base/*.$exts", GLOB_BRACE) ?: [] as $f) {
+        $gallery[] = ['src'=>'images/gallery/'.basename($f), 'cat'=>'General', 'cap'=>$cap($f), 't'=>filemtime($f)];
+    }
+    foreach (glob("$base/*", GLOB_ONLYDIR) ?: [] as $d) {
+        $c = ucwords(str_replace(['-','_'], ' ', basename($d)));
+        foreach (glob("$d/*.$exts", GLOB_BRACE) ?: [] as $f) {
+            $gallery[] = ['src'=>'images/gallery/'.basename($d).'/'.basename($f), 'cat'=>$c, 'cap'=>$cap($f), 't'=>filemtime($f)];
+        }
+    }
+    usort($gallery, fn($a,$b) => $b['t'] <=> $a['t']);
+    $gcats = array_values(array_unique(array_column($gallery, 'cat'))); sort($gcats);
+}
+
+// ---------- EVENTS DATA (edit here) ----------
+$events = [
+    ['date'=>'2026-11-14','title'=>'Bodybuilding & Fitness Championship','venue'=>'Venue to be confirmed','desc'=>'Bodybuilding, Strongmen, Pageants and Aerobics & Fitness categories.'],
+    ['date'=>'2026-12-05','title'=>'Dress A Learner Drive','venue'=>'Venue to be confirmed','desc'=>'Collecting and handing out school uniforms for the new school year.'],
+    ['date'=>'2027-01-23','title'=>'Pad-A-Girl Outreach','venue'=>'Venue to be confirmed','desc'=>'Providing sanitary products and dignity packs to girls in need.'],
+];
+$events = array_filter($events, fn($e) => $e['date'] >= date('Y-m-d'));
+usort($events, fn($a,$b) => strcmp($a['date'], $b['date']));
+
+// ---------- INITIATIVES DATA (edit here) ----------
+$initiatives = [
+    ['id'=>'dress-a-learner','title'=>'Dress A Learner','img'=>'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1000&q=80','text'=>'A community upliftment initiative by K-One Kasi Development dedicated to helping children access school uniforms and essential school clothing.'],
+    ['id'=>'pad-a-girl','title'=>'Pad-A-Girl','img'=>'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1000&q=80','text'=>'Ensuring girls never miss school because of a lack of sanitary products, by providing pads and dignity packs.'],
+    ['id'=>'sports-talent','title'=>'Sports & Talent Development','img'=>'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1000&q=80','text'=>'Bodybuilding, Strongmen, Pageants and Aerobics & Fitness programmes that give people a platform to grow and shine.'],
+    ['id'=>'community-outreach','title'=>'Community Outreach','img'=>'https://images.unsplash.com/photo-1559027615-cd4628902d4a?auto=format&fit=crop&w=1000&q=80','text'=>'Bringing people together around a shared vision of community development and supporting those in need.'],
+];
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><?php echo htmlspecialchars($titles[$page]); ?> | People's Development Project</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--font-heading:'Oswald',sans-serif;--font-body:'Inter',sans-serif;--bg-dark:#000;--text-dark:#111;--text-muted:#666;--accent:#8B5CF6;--accent-light:#f3effe;--border:#e2e8f0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font-body);color:var(--text-dark);background:#fff;line-height:1.6;overflow-x:hidden}
+a{text-decoration:none;color:inherit}ul{list-style:none}
+
+/* NAV */
+header{position:fixed;top:0;left:0;width:100%;z-index:1000;background:rgba(0,0,0,.85);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.1)}
+.nav-container{max-width:1400px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:20px 40px}
+.logo{font-family:var(--font-heading);font-size:22px;font-weight:700;letter-spacing:2px;color:#fff;text-transform:uppercase;line-height:1.1}
+.logo span{display:block;font-size:11px;font-weight:400;letter-spacing:4px;color:#aaa}
+.nav-links{display:flex;align-items:center;gap:26px}
+.nav-links>a,.dropdown-toggle{font-family:var(--font-heading);font-size:15px;font-weight:600;letter-spacing:1.5px;color:#fff;text-transform:uppercase;transition:color .3s}
+.nav-links>a:hover,.nav-links>a.active,.nav-dropdown:hover .dropdown-toggle,.dropdown-toggle.active{color:var(--accent)}
+.nav-dropdown{position:relative;display:flex;align-items:center}
+.dropdown-toggle{display:flex;align-items:center;gap:6px}
+.arrow{font-size:10px;transition:transform .3s}.nav-dropdown:hover .arrow{transform:rotate(180deg)}
+.dropdown-menu{position:absolute;top:100%;left:0;min-width:240px;background:rgba(0,0,0,.95);border:1px solid rgba(255,255,255,.15);border-radius:4px;padding:10px 0;box-shadow:0 10px 25px rgba(0,0,0,.5);opacity:0;visibility:hidden;transform:translateY(10px);transition:.3s}
+.nav-dropdown:hover .dropdown-menu{opacity:1;visibility:visible;transform:none}
+.dropdown-menu a{display:block;padding:10px 20px;font-size:13px;font-weight:500;color:#ccc;transition:.2s}
+.dropdown-menu a:hover{background:rgba(139,92,246,.15);color:var(--accent)}
+.nav-actions{display:flex;align-items:center;gap:20px}
+.btn-donate{font-family:var(--font-heading);font-size:14px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#fff;border:1px solid #fff;padding:10px 22px;transition:.3s}
+.btn-donate:hover{background:#fff;color:#000}
+.grid-icon{display:none;flex-direction:column;gap:4px;width:24px;background:none;border:none;cursor:pointer}
+.grid-icon span{display:block;height:2px;background:#fff;width:100%}
+
+/* HERO (home) */
+.hero{position:relative;min-height:100vh;background:#050505 url('my-hero-bg.jpg') center/cover no-repeat;display:flex;align-items:flex-end;padding-bottom:80px;color:#fff}
+.hero::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.6),rgba(0,0,0,.85))}
+.hero-content{position:relative;z-index:2;max-width:1400px;margin:0 auto;width:100%;padding:0 40px;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:flex-end}
+.hero-title-box h1{font-family:var(--font-heading);font-size:64px;font-weight:700;text-transform:uppercase;line-height:1.05;letter-spacing:1px;margin-bottom:20px}
+.hero-title-box p{font-size:15px;color:#ccc;max-width:500px;margin-bottom:25px;font-weight:300}
+.btn-link{display:inline-block;font-family:var(--font-heading);font-size:14px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;border-bottom:2px solid currentColor;padding-bottom:4px}
+.hero .btn-link{color:#fff}
+
+/* ABOUT / SHARED HEADINGS */
+.about-section{padding:120px 40px;max-width:1400px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center}
+.about-heading{font-family:var(--font-heading);font-size:48px;font-weight:700;text-transform:uppercase;line-height:1.1;margin-bottom:24px;letter-spacing:.5px}
+.about-text{font-size:15px;color:var(--text-muted);margin-bottom:40px;line-height:1.7}
+.accordion-item{border-top:1px solid var(--border);padding:20px 0}
+.accordion-header{display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:16px;cursor:pointer;user-select:none}
+.accordion-icon{width:28px;height:28px;border-radius:50%;background:var(--accent-light);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px}
+.accordion-content{display:none;margin-top:12px;font-size:14px;color:var(--text-muted)}
+.accordion-item.active .accordion-content{display:block}
+.about-image{width:100%;height:550px;object-fit:cover;border-radius:4px}
+
+/* IMPACT */
+.impact-section{padding:100px 40px;background:#fafafa;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.impact-container{max-width:1400px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center}
+.impact-cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.impact-card{background:#1a1a1a;color:#fff;padding:32px 28px;border-radius:12px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 30px rgba(0,0,0,.15);transition:.3s}
+.impact-card:hover{transform:translateY(-4px)}
+.impact-card-icon svg{width:32px;height:32px;stroke:#fff;fill:none;stroke-width:2}
+.impact-card-divider{width:36px;height:3px;background:#fff;border-radius:2px;margin:4px 0}
+.impact-card-title{font-family:var(--font-heading);font-size:22px;font-weight:600;text-transform:uppercase}
+.impact-card-sub{font-size:14px;color:#aaa}
+
+/* BANNER */
+.banner-section{position:relative;padding:120px 40px;background:#111 url('your-banner-image1.jpg') center/cover no-repeat;color:#fff;text-align:center}
+.banner-section::before{content:'';position:absolute;inset:0;background:rgba(0,0,0,.7)}
+.banner-content{position:relative;z-index:2;max-width:800px;margin:0 auto}
+.banner-subtitle{font-size:16px;margin-bottom:15px}
+.banner-title{font-family:var(--font-heading);font-size:52px;font-weight:700;text-transform:uppercase;line-height:1.1;margin-bottom:20px}
+
+/* SPONSORS */
+.sponsors-section{padding:100px 40px;text-align:center}
+.sponsors-container{max-width:1400px;margin:0 auto}
+.sponsors-heading{font-family:var(--font-heading);font-size:40px;font-weight:700;text-transform:uppercase;margin-bottom:12px}
+.sponsors-sub{color:var(--text-muted);margin-bottom:60px;font-size:15px}
+.sponsors-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:20px}
+.sponsor-card{height:130px;padding:15px;border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;transition:.3s}
+.sponsor-card img{max-width:100%;max-height:80px;object-fit:contain;filter:grayscale(100%);opacity:.8;transition:.3s}
+.sponsor-card:hover{border-color:var(--accent);transform:translateY(-4px);box-shadow:0 10px 25px rgba(0,0,0,.08)}
+.sponsor-card:hover img{filter:none;opacity:1}
+
+/* CONTACT */
+.contact-section{display:grid;grid-template-columns:1fr 1fr;min-height:600px;border-top:1px solid var(--border)}
+.contact-image{background:#eee url('your-contact-image.jpg') center/cover no-repeat;min-height:300px}
+.contact-form-container{padding:80px;display:flex;flex-direction:column;justify-content:center}
+.contact-form-container h2{font-family:var(--font-heading);font-size:44px;font-weight:700;text-transform:uppercase;margin-bottom:12px}
+.contact-form-container p{color:var(--text-muted);margin-bottom:40px;font-size:14px}
+.form-group{margin-bottom:30px}
+.form-control{width:100%;border:none;border-bottom:1px solid #111;padding:12px 0;font-family:var(--font-body);font-size:15px;outline:none;background:transparent}
+.form-control:focus{border-bottom-color:var(--accent)}
+select.form-control{cursor:pointer}
+.btn-submit{font-family:var(--font-heading);font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:none;border:none;border-bottom:2px solid #111;padding-bottom:4px;cursor:pointer;margin-top:10px;transition:.3s}
+.btn-submit:hover{color:var(--accent);border-bottom-color:var(--accent)}
+.alert-message{padding:15px;margin-bottom:25px;border-radius:4px;font-size:14px}
+.alert-success{background:#d1e7dd;color:#0f5132;border:1px solid #badbcc}
+.alert-error{background:#f8d7da;color:#842029;border:1px solid #f5c2c7}
+
+/* INNER PAGES */
+.page-hero{padding:170px 40px 80px;background:#050505;color:#fff;text-align:center}
+.page-hero h1{font-family:var(--font-heading);font-size:56px;text-transform:uppercase;letter-spacing:1px;line-height:1.1;margin-bottom:14px}
+.page-hero p{max-width:640px;margin:0 auto;color:#ccc;font-weight:300}
+.section{max-width:1400px;margin:0 auto;padding:90px 40px}
+.section h2{font-family:var(--font-heading);font-size:40px;text-transform:uppercase;margin-bottom:16px}
+.section p.lead{color:var(--text-muted);max-width:760px;margin-bottom:40px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px}
+.card{background:#1a1a1a;color:#fff;padding:32px 28px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.15);transition:transform .3s}
+.card:hover{transform:translateY(-4px)}
+.card h3{font-family:var(--font-heading);font-size:22px;text-transform:uppercase;margin-bottom:10px}
+.card p{color:#bbb;font-size:14px}
+.card .meta{display:inline-block;margin-bottom:12px;font-size:12px;letter-spacing:1px;color:var(--accent);text-transform:uppercase;font-weight:600}
+.card .btn-link{color:#fff;margin-top:18px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;padding:60px 0;border-top:1px solid var(--border)}
+.split img{width:100%;height:380px;object-fit:cover;border-radius:6px;background:#eee}
+.split h3{font-family:var(--font-heading);font-size:32px;text-transform:uppercase;margin-bottom:12px}
+.split p{color:var(--text-muted)}
+.empty{padding:50px;border:1px dashed #cbd5e1;border-radius:8px;text-align:center;color:var(--text-muted)}
+
+/* GALLERY */
+.filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:36px}
+.filter-btn{font-family:var(--font-heading);letter-spacing:1px;text-transform:uppercase;font-size:14px;padding:9px 20px;border:1px solid #111;background:#fff;cursor:pointer;transition:.2s}
+.filter-btn:hover,.filter-btn.active{background:#111;color:#fff}
+.gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.gallery-item{position:relative;aspect-ratio:1/1;overflow:hidden;border-radius:6px;cursor:pointer;background:#eee}
+.gallery-item img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.gallery-item:hover img{transform:scale(1.07)}
+.gallery-item .cap{position:absolute;left:0;right:0;bottom:0;padding:30px 14px 12px;color:#fff;font-size:13px;background:linear-gradient(transparent,rgba(0,0,0,.75));opacity:0;transition:.3s}
+.gallery-item:hover .cap{opacity:1}
+.gallery-item.hide{display:none}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:2000;display:none;align-items:center;justify-content:center;padding:40px}
+.lightbox.open{display:flex}
+.lightbox img{max-width:100%;max-height:85vh;border-radius:4px}
+.lb-btn{position:absolute;background:none;border:none;color:#fff;font-size:42px;cursor:pointer;padding:10px 18px}
+.lb-close{top:10px;right:16px}.lb-prev{left:10px;top:50%}.lb-next{right:10px;top:50%}
+.lb-cap{position:absolute;bottom:18px;left:0;right:0;text-align:center;color:#ccc;font-size:14px}
+
+footer{background:#000;color:#888;padding:60px 40px;text-align:center;border-top:1px solid #222;font-size:14px}
+
+/* RESPONSIVE */
+@media(max-width:1100px){.nav-links{gap:16px}.nav-links>a,.dropdown-toggle{font-size:13px}}
+@media(max-width:992px){
+ .grid-icon{display:flex}.btn-donate{display:none}.nav-container{padding:16px 20px}
+ .nav-links{display:none;position:absolute;top:100%;left:0;right:0;flex-direction:column;align-items:flex-start;gap:0;background:rgba(0,0,0,.97);padding:10px 20px 20px}
+ .nav-links.open{display:flex}
+ .nav-links>a,.nav-dropdown{padding:12px 0;width:100%}
+ .dropdown-menu{position:static;opacity:1;visibility:visible;transform:none;background:none;border:none;box-shadow:none;display:none}
+ .nav-dropdown:hover .dropdown-menu{display:block}
+ .hero-content,.about-section,.impact-container,.contact-section,.split{grid-template-columns:1fr}
+ .impact-cards-grid{grid-template-columns:1fr}
+ .contact-form-container{padding:40px 20px}.about-section{padding:60px 20px}.section{padding:60px 20px}
+ .hero-title-box h1,.page-hero h1{font-size:42px}.banner-title{font-size:36px}.split{gap:24px}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="nav-container">
+    <a href="index.php" class="logo">People's Development<span>PROJECT</span></a>
+
+    <nav class="nav-links" id="navLinks">
+      <a href="index.php" class="<?php echo act('home',$page); ?>">HOME</a>
+      <a href="index.php?page=about" class="<?php echo act('about',$page); ?>">ABOUT</a>
+      <a href="index.php#what-we-do">WHAT WE DO</a>
+      <a href="index.php?page=events" class="<?php echo act('events',$page); ?>">UPCOMING EVENTS</a>
+      <a href="index.php?page=gallery" class="<?php echo act('gallery',$page); ?>">GALLERY</a>
+      <a href="index.php?page=get-involved" class="<?php echo act('get-involved',$page); ?>">GET INVOLVED</a>
+
+      <div class="nav-dropdown">
+        <a href="index.php?page=initiatives" class="dropdown-toggle<?php echo act('initiatives',$page); ?>">INITIATIVES <span class="arrow">▼</span></a>
+        <ul class="dropdown-menu">
+          <li><a href="index.php?page=initiatives#dress-a-learner">Dress A Learner</a></li>
+          <li><a href="index.php?page=initiatives#pad-a-girl">Pad-A-Girl</a></li>
+          <li><a href="index.php?page=initiatives#sports-talent">Sports &amp; Talent Development</a></li>
+          <li><a href="index.php?page=initiatives#community-outreach">Community Outreach</a></li>
+        </ul>
+      </div>
+
+      <a href="index.php#sponsors">PARTNERS</a>
+      <a href="index.php#contact">CONTACT</a>
+    </nav>
+
+    <div class="nav-actions">
+      <a href="index.php#contact" class="btn-donate">DONATE NOW</a>
+      <button class="grid-icon" id="menuToggle" aria-label="Toggle menu"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</header>
+
+<?php /* =============================== HOME =============================== */ ?>
+<?php if ($page === 'home'): ?>
+
+<section id="home" class="hero">
+  <div class="hero-content">
+    <div></div>
+    <div class="hero-title-box">
+      <h1>DRESS A LEARNER</h1>
+      <p>Dress A Learner is a community upliftment initiative by K-One Kasi Development dedicated to helping children access school uniforms and essential school clothing.</p>
+      <a href="index.php?page=initiatives#dress-a-learner" class="btn-link">VIEW MORE</a>
+    </div>
+  </div>
+</section>
+
+<section id="about" class="about-section">
+  <div>
+    <h2 class="about-heading">ABOUT THE PEOPLE'S DEVELOPMENT PROJECT</h2>
+    <p class="about-text">People's Development Project is a community-driven initiative built on the belief that meaningful changes begin when people are given opportunities to grow, participate and realise their potential.</p>
+
+    <div class="accordion-item active"><div class="accordion-header"><span>Our Mission</span><span class="accordion-icon">▲</span></div>
+      <div class="accordion-content"><p>To empower individuals, develop talent and uplift communities through sport, fitness, personal development and meaningful community initiatives.</p></div></div>
+    <div class="accordion-item"><div class="accordion-header"><span>Our Story</span><span class="accordion-icon">▼</span></div>
+      <div class="accordion-content"><p>A vision born from the people, built for the people. We are driven by the belief that community development begins with people.</p></div></div>
+    <div class="accordion-item"><div class="accordion-header"><span>Our Programmes</span><span class="accordion-icon">▼</span></div>
+      <div class="accordion-content"><p>Our Sporting Programmes include, Bodybuilding, Strongmen, Pageants, and Aerobics &amp; Fitness.</p></div></div>
+    <div class="accordion-item"><div class="accordion-header"><span>Our Impact</span><span class="accordion-icon">▼</span></div>
+      <div class="accordion-content"><p>Changing Lives. Empowering People. Strengthening Communities. We are rooted in creating opportunities, celebrating talents, supporting those in need and bringing people together around a shared vision of community development.</p></div></div>
+  </div>
+  <div><img src="https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&w=1000&q=80" alt="Community" class="about-image"></div>
+</section>
+
+<section id="what-we-do" class="impact-section">
+  <div class="impact-container">
+    <div>
+      <h2 class="about-heading">OUR IMPACT IN NUMBERS</h2>
+      <p class="about-text">Every number tells a story of change. Since our inception, our initiative has touched lives through sports, education, and community development.</p>
+    </div>
+    <div class="impact-cards-grid">
+      <div class="impact-card"><div class="impact-card-icon"><svg viewBox="0 0 24 24"><path d="M6 9H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h2M18 9h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-2M4 22h16M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-2.34M18 14.66V17c0 .55-.45 1-1 1h-2c-.55 0-1-.45-1-1v-2.34M12 2a4 4 0 0 0-4 4v5c0 2.21 1.79 4 4 4s4-1.79 4-4V6a4 4 0 0 0-4-4z"/></svg></div><div class="impact-card-divider"></div><div class="impact-card-title">Athletes &amp; Participants</div><div class="impact-card-sub">People reached through events</div></div>
+      <div class="impact-card"><div class="impact-card-icon"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div><div class="impact-card-divider"></div><div class="impact-card-title">Girls Supported</div><div class="impact-card-sub">Through Pad-A-Girl</div></div>
+      <div class="impact-card"><div class="impact-card-icon"><svg viewBox="0 0 24 24"><path d="M3 21h18M3 7v14M21 7v14M6 11h12M6 15h12M12 3L2 7h20L12 3z"/></svg></div><div class="impact-card-divider"></div><div class="impact-card-title">Learners Assisted</div><div class="impact-card-sub">Through Dress a Learner</div></div>
+      <div class="impact-card"><div class="impact-card-icon"><svg viewBox="0 0 24 24"><path d="M11 11V7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4M11 11h4M11 11l-3 9M15 11l3 9M7 11V7a1 1 0 0 1 1-1h1M17 11V7a1 1 0 0 0-1-1h-1M12 2v2M4 22h16"/></svg></div><div class="impact-card-divider"></div><div class="impact-card-title">Partners &amp; Sponsors</div><div class="impact-card-sub">Supporting our mission</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="initiatives" class="banner-section">
+  <div class="banner-content">
+    <p class="banner-subtitle">Empowering the next generation</p>
+    <h2 class="banner-title">BUILDING FUTURES THROUGH EDUCATION &amp; SKILLS</h2>
+    <p style="font-size:15px;color:#ddd">From classrooms to communities, we're opening doors to opportunity. Together, we provide young people with the tools, knowledge, and confidence to shape brighter futures.</p>
+  </div>
+</section>
+
+<section id="sponsors" class="sponsors-section">
+  <div class="sponsors-container">
+    <h2 class="sponsors-heading">OUR PARTNERS &amp; SPONSORS</h2>
+    <p class="sponsors-sub">Collaborating with organizations driving meaningful change across South Africa.</p>
+    <div class="sponsors-grid">
+      <?php foreach ([['logo-ibff.png','IBFF Worldwide'],['logo-ackermans.png','Ackermans Pharmacy'],['logo-galaxy-gym.png','Galaxy Gym'],['logo-big-tree.png','Big Tree'],['logo-shredded.png','Shredded 2.0'],['logo-ihawu.png','Ihawu Security'],['logo-tsotetsi.png','Tsotetsi Foundation']] as $s): ?>
+        <div class="sponsor-card"><img src="<?php echo $s[0]; ?>" alt="<?php echo $s[1]; ?>"></div>
+      <?php endforeach; ?>
+    </div>
+  </div>
+</section>
+
+<section id="contact" class="contact-section">
+  <div class="contact-image"></div>
+  <div class="contact-form-container">
+    <h2>LET'S WORK TOGETHER</h2>
+    <p>Have a question, an idea, or want to partner with us? We'd love to hear from you. Fill out the form and our team will get back to you shortly.</p>
+
+    <?php if (!empty($form_message)): ?>
+      <div class="alert-message <?php echo $form_status === 'success' ? 'alert-success' : 'alert-error'; ?>"><?php echo htmlspecialchars($form_message); ?></div>
+    <?php endif; ?>
+
+    <form action="index.php#contact" method="POST">
+      <div class="form-group"><input type="text" name="name" class="form-control" placeholder="Name*" value="<?php echo htmlspecialchars($name_val); ?>" required></div>
+      <div class="form-group"><input type="email" name="email" class="form-control" placeholder="Email*" value="<?php echo htmlspecialchars($email_val); ?>" required></div>
+      <div class="form-group"><input type="tel" name="phone" class="form-control" placeholder="Phone" value="<?php echo htmlspecialchars($phone_val); ?>"></div>
+      <div class="form-group">
+        <select name="help_topic" class="form-control" required>
+          <option value="" disabled <?php echo empty($help_topic_val) ? 'selected' : ''; ?>>How can we help?*</option>
+          <?php foreach (['Partnership / Sponsorship','Donation Inquiry','Volunteering / Careers','General Information'] as $opt): ?>
+            <option value="<?php echo $opt; ?>" <?php echo $help_topic_val === $opt ? 'selected' : ''; ?>><?php echo $opt; ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="form-group"><input type="text" name="message" class="form-control" placeholder="Message or additional information" value="<?php echo htmlspecialchars($message_val); ?>"></div>
+      <button type="submit" class="btn-submit">SEND MESSAGE</button>
+    </form>
+  </div>
+</section>
+
+<?php /* =============================== ABOUT =============================== */ ?>
+<?php elseif ($page === 'about'): ?>
+
+<section class="page-hero"><h1>About Us</h1><p>A vision born from the people, built for the people.</p></section>
+<section class="section">
+  <h2>Who we are</h2>
+  <p class="lead">People's Development Project is a community-driven initiative built on the belief that meaningful change begins when people are given opportunities to grow, participate and realise their potential.</p>
+  <div class="cards">
+    <div class="card"><h3>Our Mission</h3><p>To empower individuals, develop talent and uplift communities through sport, fitness, personal development and meaningful community initiatives.</p></div>
+    <div class="card"><h3>Our Story</h3><p>We are driven by the belief that community development begins with people.</p></div>
+    <div class="card"><h3>Our Programmes</h3><p>Bodybuilding, Strongmen, Pageants, and Aerobics &amp; Fitness.</p></div>
+    <div class="card"><h3>Our Impact</h3><p>Changing lives, empowering people and strengthening communities.</p></div>
+  </div>
+</section>
+
+<?php /* =============================== EVENTS =============================== */ ?>
+<?php elseif ($page === 'events'): ?>
+
+<section class="page-hero"><h1>Upcoming Events</h1><p>Join us, compete, volunteer or simply come and support the community.</p></section>
+<section class="section">
+  <?php if (empty($events)): ?>
+    <div class="empty">No events scheduled right now. Check back soon or <a href="index.php#contact"><strong>contact us</strong></a>.</div>
+  <?php else: ?>
+    <div class="cards">
+      <?php foreach ($events as $e): ?>
+        <div class="card">
+          <span class="meta"><?php echo date('D, j F Y', strtotime($e['date'])); ?></span>
+          <h3><?php echo htmlspecialchars($e['title']); ?></h3>
+          <p><strong>Venue:</strong> <?php echo htmlspecialchars($e['venue']); ?></p>
+          <p style="margin-top:8px"><?php echo htmlspecialchars($e['desc']); ?></p>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+</section>
+
+<?php /* =============================== GALLERY =============================== */ ?>
+<?php elseif ($page === 'gallery'): ?>
+
+<section class="page-hero"><h1>Gallery</h1><p>Moments from our events, programmes and community initiatives.</p></section>
+<section class="section">
+  <?php if (empty($gallery)): ?>
+    <div class="empty">No photos yet. Upload images to <strong>/images/gallery/</strong> and they will appear here automatically.</div>
+  <?php else: ?>
+    <div class="filters">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <?php foreach ($gcats as $c): ?>
+        <button class="filter-btn" data-filter="<?php echo htmlspecialchars($c); ?>"><?php echo htmlspecialchars($c); ?></button>
+      <?php endforeach; ?>
+    </div>
+    <div class="gallery-grid">
+      <?php foreach ($gallery as $g): ?>
+        <div class="gallery-item" data-cat="<?php echo htmlspecialchars($g['cat']); ?>">
+          <img src="<?php echo htmlspecialchars($g['src']); ?>" alt="<?php echo htmlspecialchars($g['cap']); ?>" loading="lazy">
+          <div class="cap"><?php echo htmlspecialchars($g['cap']); ?></div>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+</section>
+
+<div class="lightbox" id="lightbox">
+  <button class="lb-btn lb-close" aria-label="Close">&times;</button>
+  <button class="lb-btn lb-prev" aria-label="Previous">&#8249;</button>
+  <img src="" alt="" id="lbImg">
+  <button class="lb-btn lb-next" aria-label="Next">&#8250;</button>
+  <div class="lb-cap" id="lbCap"></div>
+</div>
+
+<?php /* =============================== GET INVOLVED =============================== */ ?>
+<?php elseif ($page === 'get-involved'): ?>
+
+<section class="page-hero"><h1>Get Involved</h1><p>Change happens when people show up. Here's how you can be part of it.</p></section>
+<section class="section">
+  <div class="cards">
+    <div class="card"><h3>Donate</h3><p>Fund school uniforms, dignity packs and talent development programmes.</p><a class="btn-link" href="index.php#contact">Donate now</a></div>
+    <div class="card"><h3>Volunteer</h3><p>Help at events, distribution drives and community outreach days.</p><a class="btn-link" href="index.php#contact">Sign up</a></div>
+    <div class="card"><h3>Partner / Sponsor</h3><p>Businesses and organisations can sponsor events and initiatives.</p><a class="btn-link" href="index.php#contact">Partner with us</a></div>
+    <div class="card"><h3>Compete</h3><p>Take part in bodybuilding, strongmen, pageants and fitness events.</p><a class="btn-link" href="index.php?page=events">See events</a></div>
+  </div>
+</section>
+
+<?php /* =============================== INITIATIVES =============================== */ ?>
+<?php elseif ($page === 'initiatives'): ?>
+
+<section class="page-hero"><h1>Our Initiatives</h1><p>Creating opportunities, celebrating talent and supporting those in need.</p></section>
+<section class="section">
+  <?php foreach ($initiatives as $i => $it): ?>
+    <div class="split" id="<?php echo $it['id']; ?>">
+      <?php if ($i % 2 === 0): ?><img src="<?php echo $it['img']; ?>" alt="<?php echo htmlspecialchars($it['title']); ?>"><?php endif; ?>
+      <div>
+        <h3><?php echo htmlspecialchars($it['title']); ?></h3>
+        <p><?php echo htmlspecialchars($it['text']); ?></p>
+        <a class="btn-link" style="margin-top:20px" href="index.php?page=gallery">See photos</a>
+      </div>
+      <?php if ($i % 2 !== 0): ?><img src="<?php echo $it['img']; ?>" alt="<?php echo htmlspecialchars($it['title']); ?>"><?php endif; ?>
+    </div>
+  <?php endforeach; ?>
+</section>
+
+<?php endif; ?>
+
+<!-- FOOTER -->
+<footer><p>&copy; <?php echo date('Y'); ?> People's Development Project. All Rights Reserved.</p></footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Mobile menu
+  document.getElementById('menuToggle').addEventListener('click', () => document.getElementById('navLinks').classList.toggle('open'));
+
+  // Accordion
+  document.querySelectorAll('.accordion-header').forEach(h => h.addEventListener('click', () => {
+    const item = h.parentElement;
+    item.classList.toggle('active');
+    h.querySelector('.accordion-icon').textContent = item.classList.contains('active') ? '▲' : '▼';
+  }));
+
+  // Gallery filter + lightbox
+  const items = [...document.querySelectorAll('.gallery-item')];
+  const lb = document.getElementById('lightbox');
+  if (items.length && lb) {
+    const lbImg = document.getElementById('lbImg'), lbCap = document.getElementById('lbCap');
+    let visible = [], idx = 0;
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const f = btn.dataset.filter;
+      items.forEach(it => it.classList.toggle('hide', f !== 'all' && it.dataset.cat !== f));
+    }));
+    const show = n => {
+      visible = items.filter(i => !i.classList.contains('hide'));
+      idx = (n + visible.length) % visible.length;
+      const img = visible[idx].querySelector('img');
+      lbImg.src = img.src; lbCap.textContent = img.alt;
+    };
+    items.forEach(it => it.addEventListener('click', () => {
+      visible = items.filter(i => !i.classList.contains('hide'));
+      show(visible.indexOf(it)); lb.classList.add('open');
+    }));
+    const close = () => lb.classList.remove('open');
+    lb.querySelector('.lb-close').onclick = close;
+    lb.querySelector('.lb-prev').onclick = () => show(idx - 1);
+    lb.querySelector('.lb-next').onclick = () => show(idx + 1);
+    lb.addEventListener('click', e => { if (e.target === lb) close(); });
+    document.addEventListener('keydown', e => {
+      if (!lb.classList.contains('open')) return;
+      if (e.key === 'Escape') close();
+      if (e.key === 'ArrowLeft') show(idx - 1);
+      if (e.key === 'ArrowRight') show(idx + 1);
+    });
+  }
+});
+</script>
+</body>
+</html>
